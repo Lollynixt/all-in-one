@@ -74,6 +74,8 @@ jobs:
 
   publish:
     needs: build
+    # Publish whatever built, even if one platform failed.
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/download-artifact@v4
