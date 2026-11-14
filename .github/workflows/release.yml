@@ -1,0 +1,77 @@
+name: Release
+
+# Push a tag like v0.2.0 (or v0.2.0-beta.1 for a pre-release) to build and publish.
+# The app's Settings tab picks the release up and offers a one-click update.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: macos-14, target: aarch64-apple-darwin }
+          - { os: macos-14, target: x86_64-apple-darwin }
+          - { os: ubuntu-22.04, target: x86_64-unknown-linux-gnu }
+          - { os: windows-latest, target: x86_64-pc-windows-msvc }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+      - name: Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxkbcommon-dev libwayland-dev libx11-dev libxcursor-dev libxrandr-dev libxi-dev libgl1-mesa-dev libssl-dev libdbus-1-dev pkg-config
+      - name: Stamp the version from the tag
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import os, re
+          v = os.environ["GITHUB_REF_NAME"].lstrip("v")
+          s = open("Cargo.toml").read()
+          s = re.sub(r'(?m)^version = ".*"$', f'version = "{v}"', s, count=1)
+          open("Cargo.toml", "w").write(s)
+          PY
+      - name: Test
+        if: matrix.target == 'x86_64-unknown-linux-gnu'
+        run: cargo test --workspace
+      - name: Build
+        run: cargo build --release -p aio-app --target ${{ matrix.target }}
+      - name: Package
+        shell: bash
+        run: |
+          bin=all-in-one
+          if [ "$RUNNER_OS" = "Windows" ]; then bin=all-in-one.exe; fi
+          name=all-in-one-${{ matrix.target }}.tar.gz
+          mkdir -p dist
+          tar -czf "dist/$name" -C "target/${{ matrix.target }}/release" "$bin"
+          (cd dist && (sha256sum "$name" 2>/dev/null || shasum -a 256 "$name") | cut -d' ' -f1 > "$name.sha256")
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.target }}
+          path: dist/*
+
+  publish:
+    needs: build
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}

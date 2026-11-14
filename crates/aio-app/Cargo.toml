@@ -1,0 +1,33 @@
+[package]
+name = "aio-app"
+description = "All In One desktop shell"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "all-in-one"
+path = "src/main.rs"
+
+[dependencies]
+aio-core.workspace = true
+aio-llm.workspace = true
+tokio.workspace = true
+eframe.workspace = true
+egui.workspace = true
+egui-snarl.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+flate2.workspace = true
+futures-util.workspace = true
+sha2.workspace = true
+tar.workspace = true
+
+# Native open/save dialogs (Finder, File Explorer, and the desktop portal on Linux).
+[target.'cfg(target_os = "linux")'.dependencies]
+rfd = { version = "0.17", default-features = false, features = ["xdg-portal"] }
+[target.'cfg(not(target_os = "linux"))'.dependencies]
+rfd = "0.17"
