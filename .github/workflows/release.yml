@@ -2,9 +2,19 @@ name: Release
 
 # Push a tag like v0.2.0 (or v0.2.0-beta.1 for a pre-release) to build and publish.
 # The app's Settings tab picks the release up and offers a one-click update.
+# To build for a release that already exists (or if the tag push did not trigger a run):
+# Actions -> Release -> Run workflow, and enter the tag, e.g. v0.1.0. It builds the branch you pick.
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to build and attach files to (e.g. v0.1.0)'
+        required: true
+
+env:
+  TAG: ${{ github.event.inputs.tag || github.ref_name }}
 
 permissions:
   contents: write
@@ -38,7 +48,7 @@ jobs:
         run: |
           python3 - <<'PY'
           import os, re
-          v = os.environ["GITHUB_REF_NAME"].lstrip("v")
+          v = os.environ["TAG"].lstrip("v")
           s = open("Cargo.toml").read()
           s = re.sub(r'(?m)^version = ".*"$', f'version = "{v}"', s, count=1)
           open("Cargo.toml", "w").write(s)
@@ -72,6 +82,7 @@ jobs:
           merge-multiple: true
       - uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.TAG }}
           files: dist/*
           generate_release_notes: true
-          prerelease: ${{ contains(github.ref_name, '-') }}
+          prerelease: ${{ contains(env.TAG, '-') }}
