@@ -107,3 +107,15 @@ Download `all-in-one-<your platform>.tar.gz` from the Releases page and unpack i
     xattr -dr com.apple.quarantine all-in-one
 
 Later updates happen inside the app and are not affected.
+
+## Installing on macOS (no terminal)
+
+Each release includes `All-In-One-aarch64.dmg` (Apple Silicon) and `All-In-One-x86_64.dmg` (Intel).
+Open the disk image and drag **All In One** into **Applications**, then launch it from Launchpad or Spotlight.
+
+The app is ad-hoc signed, not notarised (that needs a paid Apple Developer ID, about £79/year), so the first
+launch of a downloaded copy is blocked by Gatekeeper. Right-click the app, choose **Open**, then **Open** again.
+If macOS says it is damaged, run once: `xattr -cr "/Applications/All In One.app"`.
+
+In-app updates keep working: they replace the binary inside the app and keep your data in `~/AllInOne`.
+To build the disk image yourself: `scripts/make-app.sh`.
