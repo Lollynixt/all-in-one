@@ -1,121 +1,91 @@
-# All In One (prototype 0.0.1)
+# All In One
 
-Native Rust desktop app: visual workflows, local and cloud LLMs, notes, a browser tab, and a right-hand agent panel.
-No Chromium or Electron. UI is egui (glow renderer) + egui-snarl for the node canvas.
+A native desktop app that puts a visual workflow builder, local and cloud LLMs, Markdown notes, a built-in browser tab and an AI agent panel in one window. Written in Rust (egui), no Chromium or Electron.
 
-## Run
+Status: early prototype. Releases are tagged `v0.x`; expect rough edges and breaking changes.
 
-Needs Rust 1.92+ (https://rustup.rs). Linux also needs the usual X11/Wayland + GL libs.
+## Install
+
+### macOS
+Download `All-In-One-aarch64.dmg` (Apple Silicon) or `All-In-One-x86_64.dmg` (Intel) from the [latest release](../../releases/latest), open it and drag **All In One** into **Applications**.
+
+The app is ad-hoc signed but not notarised, so Gatekeeper blocks the first launch: right-click the app, choose **Open**, then **Open** again. If macOS reports the app as damaged, run once:
+
+    xattr -cr "/Applications/All In One.app"
+
+### Windows and Linux
+Download `all-in-one-<target>.tar.gz` for your platform from the latest release and unpack it. Targets: `x86_64-pc-windows-msvc`, `x86_64-unknown-linux-gnu`. Linux needs the usual X11/Wayland and OpenGL libraries.
+
+### From source
+Needs Rust 1.92+ ([rustup](https://rustup.rs)).
 
     cargo run -p aio-app --release
 
-Workspace data lives in `~/AllInOne` (Windows: `%USERPROFILE%\AllInOne`). Override with `AIO_HOME=/some/path`.
+## Updating
+Open **Settings → Updates**. The app checks this repository's latest GitHub release at startup and every six hours (switch off under *Source and options*), then **Update to vX.Y.Z** downloads the build for your platform, verifies its SHA-256, swaps the binary (the previous one is kept as `all-in-one.prev`) and offers **Restart now**. Your data is never touched.
+
+Settings: repository to follow, optional token (only needed if the repository is private; a fine-grained read-only *Contents* token is enough), and a beta channel for pre-releases (tags such as `0.3.0-beta.1`).
+
+Developer path: **Settings → Developer: update from a downloaded source file** and `./update.sh` rebuild from a source tarball.
+
+## Data
+Everything lives in `~/AllInOne` (Windows: `%USERPROFILE%\AllInOne`). Override with `AIO_HOME=/some/path`.
 
     workflows/*.aio.json   one file per workflow (source of truth)
-    notes/**/*.md          notes, folders are notebooks
-    workflow-files/        the only place workflow file nodes can read and write
+    notes/**/*.md          notes; folders are notebooks
+    workflow-files/        the only place file and database nodes can read or write
+    settings.json          preferences and API keys (owner-only permissions on macOS/Linux)
 
-For local models install Ollama (https://ollama.com), then `ollama pull llama3.2:3b` (the Models tab shows the
-recommended model for your hardware and copies the pull command). "Demo" provider works with no model at all.
+## Features
 
-## Test
-
-    cargo test --workspace      # 23 tests
-
-## What works
-
-- Workflows: node canvas (right-click to add nodes), save/load, run with live per-node status and streamed output.
-  Nodes: Text, Read file, Template, AI chat, Contains (true/false branches), Write file, Output.
-- AI nodes use the Recommended model when the model field is empty; any model can be typed instead.
-- Privacy: cloud providers are blocked unless allowed globally (Models tab) AND per AI node. File nodes cannot leave `workflow-files/`.
-- Workflows hotbar: Text, Read file, Template, AI chat, Contains, Write file, Output buttons always visible above the canvas.
-- Notes: Markdown files, search, `[[links]]` + backlinks, Source/Split/Preview with synced scrolling, autosave.
-  Formatting toolbar (Style/headings, bold, italic, strikethrough, underline, highlight, code, lists, checklist, quote,
-  divider, links), Cmd/Ctrl+B and +I, document font (bundled Sans/Serif/Mono plus Georgia/Arial/Times/Verdana/Courier
-  when installed) and size.
-- Ollama: started automatically in the background on launch (and stopped on exit only if the app started it).
-  Models can be installed in-app with a progress bar: one-click "Install recommended", per-model Install, or any name.
-  Missing models trigger an Install prompt instead of a failed run.
-- Browser: text-mode page fetch, "agent can see this page" switch, clip to note, open in system browser.
-- Models: hardware profile, fit estimate, Recommended badge (never a gate), Ollama / OpenAI-compatible / Demo providers.
-- Agent panel on the right of every tab, collapsible. It sees the current tab (workflow, note, page) and streams replies.
-
-## Not yet (honest list)
-
-- Agent is chat only. No tool use yet (creating/editing workflows and notes), no permission prompts.
-- Browser is not Servo yet: no JS, no sign-ins. The Servo go/no-go spike is Phase 0.
-- GPU memory is only auto-detected for NVIDIA via `nvidia-smi`; otherwise set it by hand on the Models tab.
-- No cron/file triggers, no run history database, no Python code node.
-- Settings (font, provider, chosen model) are not persisted between launches. Notes editor has no line numbers or find/replace.
-- Apple Silicon GPU memory is estimated as two thirds of RAM; adjust on the Models tab if needed.
-
-## Layout
-
-    crates/aio-core   workflow model, engine, provider trait, hardware recommender, notes store (no UI deps)
-    crates/aio-llm    Ollama and OpenAI-compatible providers (streaming)
-    crates/aio-app    egui shell
-
-Fonts: DejaVu (see crates/aio-app/assets/fonts/NOTICE.txt).
-
-Dev helpers: `AIO_AUTOADD=1`, `AIO_AUTOINSTALL=1`, `AIO_START_TAB=notes|browser|models`, `AIO_PROVIDER=demo`, `AIO_AUTORUN=1`.
-
-
-## Notes outline
-The Notes sidebar has an OUTLINE section listing the page's headings (H1 to H3). Click one to jump to it in Preview, Split or Source view. The sidebar's lower block (outline, backlinks, links) is resizable.
-
-## Updating
-In the app: download the new `all-in-one-prototype.tar.gz` to `~/Downloads`, open the **Settings** tab (it shows a dot when a newer file is waiting) and press **Update now**. It rebuilds in the background, then **Restart now** launches the new version (macOS and Linux).
-
-From a terminal, from the project folder:
-
-    ./update.sh
-
-It unpacks the newest tarball, replaces the source (keeping `target/` for fast rebuilds and leaving `~/AllInOne` alone), keeps the previous version in `all-in-one.prev`, then builds and runs. Use `./update.sh --no-run` to skip launching, or pass a path to use a specific tarball.
-
-## Workflow nodes
-Pick a group in the ADD NODE bar (Input, Tools, Scripts, AI, Output), or right-click the canvas.
+**Workflows.** Node canvas (right-click or use the category bar to add nodes), save/load, run with live per-node status and streamed output.
 
 | Group | Nodes |
 |---|---|
-| Input | Text, File in (txt/md/csv/json), Note in (notebook page), API get (URL, headers) |
-| Tools | Template, Contains (true/false), Replace (regex optional), Filter lines, Lines (sort, unique, trim, number), JSON path, Count, Convert (CSV and JSON) |
-| Scripts | Python (stdin in, stdout out, 60 s limit, needs `python3`), SQL (SQLite file, or incoming CSV/JSON as table `input`; `:input` binds the incoming text safely) |
-| AI | AI chat, with a model dropdown: Auto (recommended), installed local models, Claude and OpenAI models |
-| Output | Output, File out (text/Markdown/CSV/JSON, replace or append), Note out (replace or append), API send (POST/PUT/PATCH), Database out (insert rows into SQLite) |
+| Input | Text, File in (txt/md/csv/json), Note in, API get (URL, headers) |
+| Tools | Template, Contains (true/false), Replace (regex optional), Filter lines, Lines (sort, unique, trim, number), JSON path, Count, Convert (CSV/JSON) |
+| Scripts | Python (stdin/stdout, 60 s limit, needs `python3`), SQL (SQLite file, or incoming CSV/JSON as table `input`; `:input` binds the incoming text safely) |
+| AI | AI chat with a model dropdown: Auto, installed local models, Claude and OpenAI models |
+| Output | Output, File out (text/Markdown/CSV/JSON, replace or append), Note out, API send (POST/PUT/PATCH), Database out (SQLite insert) |
 
-File and database paths are relative to the workflow files folder (`~/AllInOne/workflow-files`) and cannot escape it.
+File and database paths are relative to `workflow-files/` and cannot escape it. Click a File node to pick a file with the system file dialog.
 
-## Cloud providers
-Models tab, Cloud providers: paste a Claude (Anthropic) and/or OpenAI API key. The model list is fetched from the provider, and models can be added by ID. Cloud models appear in each AI node's dropdown and as the default model.
+**Notes.** Markdown files with search, `[[links]]` and backlinks, a heading outline with click-to-jump, Source/Split/Preview with synced scrolling, a formatting toolbar, selectable document font and size, autosave.
 
-Privacy gates, both off by default (Models tab):
-- *Allow workflows and the agent to send data to cloud providers*, plus *May use cloud models* on each AI node.
-- *Allow API nodes to use the network* (API get / API send).
+**Models.** Hardware profile and a recommended local model (a hint, never a gate). Ollama is started in the background and models can be installed in-app with a progress bar. Cloud providers: Anthropic (Claude) and OpenAI, plus any OpenAI-compatible endpoint. A Demo provider works with no model at all.
 
-Keys are stored in `~/AllInOne/settings.json` (owner-only permissions on macOS/Linux), or read from `ANTHROPIC_API_KEY` / `OPENAI_API_KEY`. Proper OS keychain storage is a planned improvement.
+**Browser.** Text-mode page fetch, "agent can see this page" switch, clip to note, open in the system browser.
 
-## Releases and in-app updates
-Releases are built by GitHub Actions (`.github/workflows/release.yml`) for macOS (Apple Silicon and Intel), Linux and Windows. Publish one with:
+**Agent panel.** Collapsible, on every tab. It sees the current tab (workflow, note or page) and streams replies.
 
-    scripts/release.sh 0.2.0
+## Privacy
+Off by default, enabled in the Models tab:
+- Sending data to cloud providers needs the global switch **and** the per-node *May use cloud models* tick.
+- API nodes need *Allow API nodes to use the network*.
 
-The Settings tab checks the repository's latest release (at startup and every six hours; switch it off under *Source and options*), downloads the build for your platform, verifies its SHA-256, swaps the binary in place (the old one is kept as `all-in-one.prev`) and offers a restart. A private repository needs a fine-grained read-only token (Settings, *Source and options*). Tags with a suffix such as `0.3.0-beta.1` are pre-releases and are only offered on the beta channel.
+Update checks contact `api.github.com` and send nothing about you. API keys are stored in `settings.json`, or read from `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` and `GITHUB_TOKEN`. OS keychain storage is planned.
 
-### First install from a release
-Download `all-in-one-<your platform>.tar.gz` from the Releases page and unpack it. On macOS the browser marks downloads as quarantined, and these builds are not notarised yet, so run once:
+## Not yet
+- Agent is chat only: no tool use (editing workflows and notes) or permission prompts.
+- Browser is text-mode: no JavaScript or sign-ins. A Servo-based engine is being evaluated.
+- No schedules or file triggers, and no run-history database.
+- GPU memory is auto-detected for NVIDIA only; Apple Silicon is estimated as two thirds of RAM (adjustable in the Models tab).
+- macOS builds are not notarised; Windows and Linux builds are unsigned.
 
-    xattr -dr com.apple.quarantine all-in-one
+## Development
 
-Later updates happen inside the app and are not affected.
+    cargo test --workspace
 
-## Installing on macOS (no terminal)
+    crates/aio-core   workflow model, engine, node logic, notes store, provider trait, hardware recommender (no UI deps)
+    crates/aio-llm    Ollama, OpenAI-compatible and Anthropic providers, model routing
+    crates/aio-app    egui application
 
-Each release includes `All-In-One-aarch64.dmg` (Apple Silicon) and `All-In-One-x86_64.dmg` (Intel).
-Open the disk image and drag **All In One** into **Applications**, then launch it from Launchpad or Spotlight.
+Releases are built by GitHub Actions (`.github/workflows/release.yml`) for macOS (Apple Silicon and Intel), Linux and Windows when a `v*` tag is pushed, or by hand from **Actions → Release → Run workflow** with an existing tag.
 
-The app is ad-hoc signed, not notarised (that needs a paid Apple Developer ID, about £79/year), so the first
-launch of a downloaded copy is blocked by Gatekeeper. Right-click the app, choose **Open**, then **Open** again.
-If macOS says it is damaged, run once: `xattr -cr "/Applications/All In One.app"`.
+    scripts/release.sh 0.2.0         tag and push a release
+    scripts/package-local.sh v0.2.0  build and package this machine's platform for the updater
+    scripts/make-app.sh              build the macOS .app and .dmg
 
-In-app updates keep working: they replace the binary inside the app and keep your data in `~/AllInOne`.
-To build the disk image yourself: `scripts/make-app.sh`.
+Developer environment variables: `AIO_HOME`, `AIO_PROVIDER=demo`, `AIO_START_TAB=notes|browser|models|settings`, `AIO_AUTORUN=1`, `AIO_LOAD=<workflow>`, `AIO_NO_UPDATE_CHECK=1`, `AIO_UPDATE_API=<url>`.
+
+Fonts: DejaVu (see `crates/aio-app/assets/fonts/NOTICE.txt`).
