@@ -334,7 +334,7 @@ mod tests {
         assert_eq!((a.url.as_str(), s.map(|s| s.url.as_str())), ("u1", Some("u2")));
         assert!(assets_for(&r, "x86_64-unknown-linux-gnu").unwrap().1.is_none());
         assert!(assets_for(&r, "x86_64-pc-windows-msvc").is_none());
-        assert!(valid_repo("jp-graham/all-in-one") && !valid_repo("nope") && !valid_repo("a/b/c") && !valid_repo("a/ b"));
+        assert!(valid_repo("octocat/all-in-one") && !valid_repo("nope") && !valid_repo("a/b/c") && !valid_repo("a/ b"));
     }
 
     fn make_targz(name: &str, content: &[u8]) -> Vec<u8> {
